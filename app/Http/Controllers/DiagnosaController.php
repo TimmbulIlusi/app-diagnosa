@@ -19,7 +19,6 @@ class DiagnosaController extends Controller
         $symptoms = [];
 
         try {
-            // URL diubah ke PythonAnywhere
             $response = Http::get("https://Hasto.pythonanywhere.com/api/symptoms?lang={$lang}");
             if ($response->successful()) {
                 $data = $response->json();
@@ -42,15 +41,19 @@ class DiagnosaController extends Controller
     {
         $lang = $request->input('lang', 'id');
         
-        $path = base_path('python_service/datasets/Medicine_Details.csv');
+        // PENTING: Gunakan public_path() agar file terbaca di Vercel
+        // Pastikan file berada di: public/csv/Medicine_Details.csv
+        $path = public_path('csv/Medicine_Details.csv'); 
+        
         $medicineRows = [];
         if (file_exists($path) && ($handle = fopen($path, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
-            for ($i = 0; $i < 20; $i++) {
-                $data = fgetcsv($handle);
-                if ($data !== FALSE && count($header) == count($data)) {
+            $count = 0;
+            while (($data = fgetcsv($handle)) !== FALSE && $count < 20) {
+                if (count($header) == count($data)) {
                     $medicineRows[] = array_combine($header, $data);
                 }
+                $count++;
             }
             fclose($handle);
         }
@@ -74,7 +77,6 @@ class DiagnosaController extends Controller
         }
 
         try {
-            // URL diubah ke PythonAnywhere
             $response = Http::post("https://Hasto.pythonanywhere.com/api/predict", [
                 'lang' => $lang,
                 'symptoms' => $selectedSymptoms
@@ -82,7 +84,7 @@ class DiagnosaController extends Controller
 
             $result = $response->json();
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal terhubung ke layanan AI Python. Pastikan Flask sedang berjalan.');
+            return back()->with('error', 'Gagal terhubung ke layanan AI. Pastikan Flask sedang berjalan.');
         }
 
         return view('result', [
