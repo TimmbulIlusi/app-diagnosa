@@ -19,7 +19,8 @@ class DiagnosaController extends Controller
         $symptoms = [];
 
         try {
-            $response = Http::get("http://127.0.0.1:5000/api/symptoms?lang={$lang}");
+            // URL diubah ke PythonAnywhere
+            $response = Http::get("https://Hasto.pythonanywhere.com/api/symptoms?lang={$lang}");
             if ($response->successful()) {
                 $data = $response->json();
                 $symptoms = is_array($data) ? $data : [];
@@ -73,7 +74,8 @@ class DiagnosaController extends Controller
         }
 
         try {
-            $response = Http::post("http://127.0.0.1:5000/api/predict", [
+            // URL diubah ke PythonAnywhere
+            $response = Http::post("https://Hasto.pythonanywhere.com/api/predict", [
                 'lang' => $lang,
                 'symptoms' => $selectedSymptoms
             ]);
