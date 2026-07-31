@@ -34,7 +34,8 @@ putenv('SESSION_DRIVER=cookie');
 putenv('LOG_CHANNEL=stderr');
 putenv('CACHE_STORE=array');
 
-// Force APP_DEBUG to true so Laravel displays exact error messages instead of HTTP 500
+// Force APP_KEY & APP_DEBUG for Vercel deployment
+putenv('APP_KEY=base64:8uA+3A3vH/5x/G7J9X1L3O5Q7R9S1T3U5V7W9X1Y3Z0=');
 putenv('APP_DEBUG=true');
 
 $_ENV['APP_STORAGE'] = '/tmp/storage';
@@ -42,6 +43,7 @@ $_ENV['VIEW_COMPILED_PATH'] = '/tmp/storage/framework/views';
 $_ENV['SESSION_DRIVER'] = 'cookie';
 $_ENV['LOG_CHANNEL'] = 'stderr';
 $_ENV['CACHE_STORE'] = 'array';
+$_ENV['APP_KEY'] = 'base64:8uA+3A3vH/5x/G7J9X1L3O5Q7R9S1T3U5V7W9X1Y3Z0=';
 $_ENV['APP_DEBUG'] = 'true';
 
 require __DIR__ . '/../vendor/autoload.php';
