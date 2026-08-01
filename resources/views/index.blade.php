@@ -235,9 +235,9 @@
             <input type="hidden" id="errorMsg" value="@if($lang == 'id') Harap centang minimal 1 gejala sebelum mendiagnosis! @else Please select at least 1 symptom before diagnosing! @endif">
             
             <div class="symptom-container">
-                <!-- GRID INI DIKOSONGKAN DARI @FOREACH KARENA KITA PAKAI JAVASCRIPT -->
+                <!-- Data gejala akan di-render menggunakan JavaScript secara instan -->
                 <div class="grid" id="symptomGrid">
-                    <!-- Gejala akan di-render otomatis oleh JavaScript di bawah -->
+                    <!-- Checkbox Gejala Muncul Di Sini -->
                 </div>
             </div>
             
@@ -250,7 +250,6 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // DATA GEJALA DI-HARDCODE AGAR TIDAK ERROR MESKIPUN SERVER PYTHON MATI
             const currentLang = '{{ $lang }}';
             const gejala = [
                 {"id": "itching", "label": "Gatal-gatal", "en": "Itching"},
@@ -389,7 +388,6 @@
 
             const grid = document.getElementById('symptomGrid');
             
-            // Masukkan semua gejala ke dalam HTML secara instan
             gejala.forEach(g => {
                 let textLabel = currentLang === 'id' ? g.label : g.en;
                 let labelEl = document.createElement('label');
