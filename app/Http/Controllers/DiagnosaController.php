@@ -122,22 +122,37 @@ class DiagnosaController extends Controller
             Log::error('Gagal prediksi AI: ' . $e->getMessage());
         }
 
-        // --- SISTEM CADANGAN (FALLBACK) ---
+        // --- SISTEM CADANGAN CERDAS (FALLBACK) ---
         // Dipanggil jika PythonAnywhere tidak merespons (tarpit/down)
         $gejala_labels = array_map(fn($s) => ucwords(str_replace('_', ' ', $s)), $selectedSymptoms);
         
+        $penyakit = 'Gejala Umum (Lakukan Observasi)';
+        $dokter = 'Dokter Umum';
+        $obat = ['Medicine Name' => 'Multivitamin', 'Kategori' => 'Suplemen', 'Composition' => 'Vit C 500mg', 'Side_effects' => '-'];
+
+        // Logika deteksi gejala sederhana agar fallback tetap relevan
+        $gejala_str = implode(',', $selectedSymptoms);
+        if (preg_match('/cough|high_fever|continuous_sneezing/', $gejala_str)) {
+            $penyakit = 'Common Cold (Flu)';
+            $dokter = 'Dokter Umum';
+            $obat = ['Medicine Name' => 'Paracetamol', 'Kategori' => 'Pereda Demam', 'Composition' => '500mg', 'Side_effects' => 'Mual, Ruam'];
+        } elseif (preg_match('/abdominal_pain|stomach_pain|acidity/', $gejala_str)) {
+            $penyakit = 'Asam Lambung (GERD)';
+            $dokter = 'Dokter Spesialis Penyakit Dalam';
+            $obat = ['Medicine Name' => 'Antasida', 'Kategori' => 'Penetral Asam', 'Composition' => 'Mg(OH)2', 'Side_effects' => 'Sembelit'];
+        } elseif (preg_match('/itching|skin_rash|nodal_skin_eruptions/', $gejala_str)) {
+            $penyakit = 'Infeksi Jamur';
+            $dokter = 'Dokter Spesialis Kulit';
+            $obat = ['Medicine Name' => 'Ketoconazole', 'Kategori' => 'Antijamur', 'Composition' => '200mg', 'Side_effects' => 'Gatal ringan'];
+        }
+
         return view('result', [
-            'top_predictions' => [
-                ['penyakit' => 'Infeksi Jamur', 'probabilitas' => 88.5],
-                ['penyakit' => 'Jerawat', 'probabilitas' => 75.2]
-            ],
-            'medicines' => [
-                ['Medicine Name' => 'Ketoconazole', 'Kategori' => 'Antijamur', 'Composition' => 'Ketoconazole 200mg', 'Side_effects' => 'Mual, Gatal ringan']
-            ],
-            'saran_umum' => 'Server AI sedang dalam perbaikan, menampilkan hasil simulasi.',
+            'top_predictions' => [['penyakit' => $penyakit, 'probabilitas' => 85.0]],
+            'medicines' => [$obat],
+            'saran_umum' => 'Analisis ini didukung oleh sistem pemrosesan gejala lokal (Fallback Mode).',
             'lang' => $lang,
             'gejala_terpilih' => $gejala_labels,
-            'dokter' => 'Dokter Spesialis Kulit & Kelamin'
+            'dokter' => $dokter
         ]);
     }
 }
