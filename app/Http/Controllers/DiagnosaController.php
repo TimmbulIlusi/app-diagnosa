@@ -7,7 +7,20 @@ use Illuminate\Support\Facades\Log;
 
 class DiagnosaController extends Controller
 {
-    // Fungsi untuk membaca CSV dan memproses diagnosa secara internal
+    // Fungsi yang hilang tadi
+    public function dashboard(Request $request)
+    {
+        $lang = $request->input('lang', 'id');
+        return view('dashboard', compact('lang'));
+    }
+
+    public function index(Request $request)
+    {
+        $lang = $request->input('lang', 'id');
+        // Daftar gejala tetap didefinisikan secara manual atau diambil dari file
+        return view('index', compact('lang'));
+    }
+
     public function predict(Request $request)
     {
         $lang = $request->input('lang', 'id');
@@ -17,26 +30,25 @@ class DiagnosaController extends Controller
             return redirect()->back()->with('error', 'Harap centang minimal 1 gejala!');
         }
 
-        // 1. Load Data Training (Gejala -> Penyakit)
         $trainPath = public_path('python_service/datasets/Training.csv');
         $medPath = public_path('csv/Medicine_Details.csv');
         
         $predictions = [];
         
-        // Logika sederhana: Membandingkan kemiripan gejala
+        // Membaca Training.csv untuk mencocokkan gejala
         if (($handle = fopen($trainPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
-            $gejalaIndices = array_flip($header);
+            $prognosisIdx = array_search('prognosis', $header);
             
             while (($row = fgetcsv($handle)) !== FALSE) {
-                $prognosis = $row[array_search('prognosis', $header)];
+                $prognosis = $row[$prognosisIdx];
                 $score = 0;
                 foreach ($selectedSymptoms as $s) {
-                    if (isset($gejalaIndices[$s]) && $row[$gejalaIndices[$s]] == 1) {
+                    $sIdx = array_search($s, $header);
+                    if ($sIdx !== false && $row[$sIdx] == 1) {
                         $score++;
                     }
                 }
-                
                 if ($score > 0) {
                     $predictions[$prognosis] = ($predictions[$prognosis] ?? 0) + $score;
                 }
@@ -44,11 +56,10 @@ class DiagnosaController extends Controller
             fclose($handle);
         }
 
-        // Urutkan hasil
         arsort($predictions);
         $top = array_slice($predictions, 0, 3, true);
 
-        // 2. Ambil Obat dari Medicine_Details.csv
+        // Mengambil obat
         $medicines = [];
         if (($handle = fopen($medPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
