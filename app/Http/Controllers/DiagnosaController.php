@@ -16,10 +16,8 @@ class DiagnosaController extends Controller
     public function infoDataset(Request $request) 
     {
         $lang = $request->input('lang', 'id');
-        // PATH YANG BENAR SESUAI FOLDER PROJECT KAMU
-        $medPath = public_path('csv/Medicine_Details.csv'); 
+        $medPath = public_path('csv/Medicine_Details.csv');
         $medicineRows = [];
-        
         if (file_exists($medPath) && ($handle = fopen($medPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
             while (($row = fgetcsv($handle)) !== FALSE && count($medicineRows) < 20) {
@@ -29,7 +27,6 @@ class DiagnosaController extends Controller
             }
             fclose($handle);
         }
-        
         return view('info_dataset', compact('lang', 'medicineRows'));
     }
 
@@ -38,28 +35,22 @@ class DiagnosaController extends Controller
         $lang = $request->input('lang', 'id');
         $selectedSymptoms = $request->input('symptoms', []);
 
-        if (empty($selectedSymptoms)) {
-            return redirect()->back()->with('error', 'Harap centang minimal 1 gejala!');
-        }
+        if (empty($selectedSymptoms)) return redirect()->back()->with('error', 'Pilih minimal 1 gejala!');
 
         try {
             $response = Http::timeout(10)->post('https://hasto.pythonanywhere.com/api/predict', [
-                'symptoms' => $selectedSymptoms,
-                'lang' => $lang
+                'symptoms' => $selectedSymptoms, 'lang' => $lang
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
                 return view('result', [
-                    'top_predictions' => $data['top_predictions'], 
+                    'top_predictions' => $data['top_predictions'],
                     'gejala_terpilih' => $data['gejala_terpilih'],
                     'lang' => $lang
                 ]);
             }
-        } catch (\Exception $e) {
-            Log::error("API Gagal: " . $e->getMessage());
-        }
-
-        return redirect()->back()->with('error', 'Sistem AI sedang sibuk.');
+        } catch (\Exception $e) { Log::error($e->getMessage()); }
+        return redirect()->back()->with('error', 'Sistem AI sibuk.');
     }
 }
