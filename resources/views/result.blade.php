@@ -35,18 +35,14 @@
 </head>
 <body>
     <div class="container">
-        
         <div class="section-title">@if($lang == 'id') Gejala yang Anda Laporkan: @else Reported Symptoms: @endif</div>
         <div class="chip-container">
-            @forelse($gejala_terpilih as $gejala)
+            @foreach($gejala_terpilih as $gejala)
                 <span class="chip">{{ $gejala }}</span>
-            @empty
-                <span style="color: #64748b; font-size: 14px; font-style: italic;">@if($lang == 'id') Tidak ada gejala yang dipilih. @else No symptoms selected. @endif</span>
-            @endforelse
+            @endforeach
         </div>
 
         <div class="section-title">@if($lang == 'id') Hasil Analisis Probabilitas Model (Top 3): @else Model Probability Analysis Results (Top 3): @endif</div>
-        
         <table class="prob-table">
             <thead>
                 <tr>
@@ -55,83 +51,49 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($top_predictions as $item)
+                @foreach($top_predictions as $item)
                 <tr>
-                    <td>
-                        @if($loop->first)<i class="fa-solid fa-circle-chevron-right" style="color: #2563eb; margin-right: 6px;"></i>@endif
-                        {{ $item['penyakit'] ?? ($item['disease'] ?? '-') }}
-                    </td>
-                    <td><strong>{{ $item['probabilitas'] ?? ($item['probability'] ?? '0') }}%</strong></td>
+                    <td>{{ $item['penyakit'] }}</td>
+                    <td><strong>{{ $item['probabilitas'] }}%</strong></td>
                 </tr>
-                @empty
-                <tr>
-                    <td colspan="2" style="text-align: center; color: #64748b;">@if($lang == 'id') Tidak ada data prediksi. @else No prediction data available. @endif</td>
-                </tr>
-                @endforelse
+                @endforeach
             </tbody>
         </table>
 
         <div class="warning-box">
-            <div class="warning-icon" style="font-size: 24px;">⚠️</div>
+            <div style="font-size: 24px;">⚠️</div>
             <div class="warning-text">
-                @if($lang == 'id')
-                    <p><strong>Peringatan Medis:</strong> Sistem menggunakan analisis probabilitas <i>Machine Learning</i> dan bukan pengganti diagnosis medis resmi.</p>
-                    <p>Sangat disarankan bagi Anda untuk berkonsultasi secara langsung dengan: <br> <strong>&rarr; {{ $dokter }}</strong></p>
-                @else
-                    <p><strong>Medical Disclaimer:</strong> This system uses Machine Learning probability analysis and does not replace official medical diagnosis.</p>
-                    <p>It is highly recommended to consult directly with: <br> <strong>&rarr; {{ $dokter }}</strong></p>
-                @endif
+                <p><strong>@if($lang == 'id') Peringatan Medis: @else Medical Disclaimer: @endif</strong> @if($lang == 'id') Sistem menggunakan analisis probabilitas <i>Machine Learning</i>. @else This system uses Machine Learning probability analysis. @endif</p>
+                <p><strong>&rarr; {{ $dokter }}</strong></p>
             </div>
         </div>
 
-        <div class="section-title">@if($lang == 'id') Rujukan Informasi Obat & Penanganan (Knowledge Base): @else Medicine Information & Care Reference (Knowledge Base): @endif</div>
+        <div class="section-title">@if($lang == 'id') Rujukan Informasi Obat: @else Medicine Information Reference: @endif</div>
         
-        <div class="medicine-disclaimer">
-            <i class="fa-solid fa-circle-info" style="color: #2563eb; font-size: 15px;"></i>
-            <span>
-                @if($lang == 'id')
-                    <strong>Catatan:</strong> Informasi obat di bawah bersumber dari basis data umum (*Knowledge Base*) untuk tujuan edukasi semata. Selalu konsultasikan penggunaan obat dengan dokter atau apoteker.
-                @else
-                    <strong>Note:</strong> Medicine information below is sourced from a general database for educational purposes only. Always consult a doctor or pharmacist regarding medication.
-                @endif
-            </span>
-        </div>
-
-        @if(!empty($medicines) && is_array($medicines) && isset($medicines[0]) && is_array($medicines[0]))
+        @if(!empty($medicines))
             <table class="med-table">
                 <thead>
                     <tr>
-                        <th width="25%">@if($lang == 'id') Nama & Jenis Obat @else Medicine Name & Type @endif</th>
-                        <th width="30%">@if($lang == 'id') Kandungan Aktif @else Active Composition @endif</th>
-                        <th width="45%">@if($lang == 'id') Efek Samping Umum @else Common Side Effects @endif</th>
+                        <th width="25%">@if($lang == 'id') Nama Obat @else Medicine Name @endif</th>
+                        <th width="75%">@if($lang == 'id') Detail Informasi @else Detail Information @endif</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($medicines as $obat)
+                    @foreach($top_predictions as $pred)
                     <tr>
+                        <td><strong>{{ $pred['obat']['nama'] }}</strong></td>
                         <td>
-                            <strong>{{ $obat['Medicine Name'] ?? '-' }}</strong><br>
-                            <span class="badge-kategori">{{ $obat['Kategori'] ?? 'Obat Umum' }}</span>
+                            <strong>@if($lang == 'id') Efek Samping: @else Side Effects: @endif</strong> {{ $pred['obat']['efek'] }}
                         </td>
-                        <td>{{ $obat['Composition'] ?? '-' }}</td>
-                        <td>{{ $obat['Side_effects'] ?? '-' }}</td>
                     </tr>
                     @endforeach
                 </tbody>
             </table>
         @else
-            <div style="background-color: #f8fafc; border: 1.5px dashed #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 10px;">
-                <h4 style="color: #1e3a8a; margin-bottom: 8px; font-size: 15px;">
-                    <i class="fa-solid fa-circle-info" style="color: #2563eb; margin-right: 6px;"></i>
-                    @if($lang == 'id') Saran Penanganan Mandiri (First Aid): @else General Care Advice (First Aid): @endif
-                </h4>
-                <p style="color: #475569; font-size: 14.5px; margin: 0; line-height: 1.5;">
-                    {{ $saran_umum }}
-                </p>
-            </div>
+            <p>{{ $saran_umum ?? 'N/A' }}</p>
         @endif
 
-        <a href="/diagnosa?lang={{ $lang }}" class="back-btn">&larr; @if($lang == 'id') Kembali Cek Gejala @else Back to Symptoms @endif</a>
+        <a href="/diagnosa?lang={{ $lang }}" class="back-btn">&larr; @if($lang == 'id') Kembali @else Back @endif</a>
     </div>
 </body>
 </html>
