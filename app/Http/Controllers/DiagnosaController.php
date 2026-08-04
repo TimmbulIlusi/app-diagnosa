@@ -12,7 +12,26 @@ class DiagnosaController extends Controller
     public function index(Request $request) { return view('index', ['lang' => $request->input('lang', 'id')]); }
     public function infoPenyakit(Request $request) { return view('info_penyakit', ['lang' => $request->input('lang', 'id')]); }
     public function infoPengembang(Request $request) { return view('info_pengembang', ['lang' => $request->input('lang', 'id')]); }
-    public function infoDataset(Request $request) { return view('info_dataset', ['lang' => $request->input('lang', 'id')]); }
+
+    public function infoDataset(Request $request) 
+    {
+        $lang = $request->input('lang', 'id');
+        // PATH YANG BENAR SESUAI FOLDER PROJECT KAMU
+        $medPath = public_path('csv/Medicine_Details.csv'); 
+        $medicineRows = [];
+        
+        if (file_exists($medPath) && ($handle = fopen($medPath, 'r')) !== FALSE) {
+            $header = fgetcsv($handle);
+            while (($row = fgetcsv($handle)) !== FALSE && count($medicineRows) < 20) {
+                if ($header && $row && count($header) == count($row)) {
+                    $medicineRows[] = array_combine($header, $row);
+                }
+            }
+            fclose($handle);
+        }
+        
+        return view('info_dataset', compact('lang', 'medicineRows'));
+    }
 
     public function predict(Request $request)
     {
@@ -40,6 +59,7 @@ class DiagnosaController extends Controller
         } catch (\Exception $e) {
             Log::error("API Gagal: " . $e->getMessage());
         }
+
         return redirect()->back()->with('error', 'Sistem AI sedang sibuk.');
     }
 }
