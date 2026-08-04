@@ -8,13 +8,11 @@ use Illuminate\Support\Facades\Log;
 
 class DiagnosaController extends Controller
 {
-    // TAMBAHKAN INI AGAR ERROR HILANG
-    public function dashboard(Request $request) 
-    { 
-        return view('dashboard', ['lang' => $request->input('lang', 'id')]); 
-    }
-
+    public function dashboard(Request $request) { return view('dashboard', ['lang' => $request->input('lang', 'id')]); }
     public function index(Request $request) { return view('index', ['lang' => $request->input('lang', 'id')]); }
+    public function infoPenyakit(Request $request) { return view('info_penyakit', ['lang' => $request->input('lang', 'id')]); }
+    public function infoPengembang(Request $request) { return view('info_pengembang', ['lang' => $request->input('lang', 'id')]); }
+    public function infoDataset(Request $request) { return view('info_dataset', ['lang' => $request->input('lang', 'id')]); }
 
     public function predict(Request $request)
     {
@@ -42,7 +40,6 @@ class DiagnosaController extends Controller
         } catch (\Exception $e) {
             Log::error("API Gagal: " . $e->getMessage());
         }
-
         return redirect()->back()->with('error', 'Sistem AI sedang sibuk.');
     }
 }
