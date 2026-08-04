@@ -16,13 +16,16 @@ class DiagnosaController extends Controller
     public function infoDataset(Request $request) 
     {
         $lang = $request->input('lang', 'id');
-        $medPath = base_path('public/csv/Medicine_Details.csv');
+        // Pastikan file berada di folder public/csv/
+        $medPath = public_path('csv/Medicine_Details.csv');
         $medicineRows = [];
         
         if (file_exists($medPath) && ($handle = fopen($medPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
             while (($row = fgetcsv($handle)) !== FALSE && count($medicineRows) < 20) {
-                $medicineRows[] = array_combine($header, $row);
+                if ($header && $row && count($header) == count($row)) {
+                    $medicineRows[] = array_combine($header, $row);
+                }
             }
             fclose($handle);
         }
@@ -40,23 +43,34 @@ class DiagnosaController extends Controller
             return redirect()->back()->with('error', 'Harap centang minimal 1 gejala!');
         }
 
-        $trainPath = base_path('public/python_service/datasets/Training.csv');
-        $medPath = base_path('public/csv/Medicine_Details.csv');
+        // Jalur file yang diperbaiki untuk Vercel
+        $trainPath = public_path('python_service/datasets/Training.csv');
+        $medPath = public_path('csv/Medicine_Details.csv');
         
         $predictions = [];
         $medicines = [];
 
+        // 1. Logika Diagnosa (Mencocokkan gejala dengan Training.csv)
         if (file_exists($trainPath) && ($handle = fopen($trainPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
             $prognosisIdx = array_search('prognosis', $header);
+            
             while (($row = fgetcsv($handle)) !== FALSE) {
+                if (!isset($row[$prognosisIdx])) continue;
+                
                 $prognosis = $row[$prognosisIdx];
-                $score = 0;
+                $matchCount = 0;
+                
                 foreach ($selectedSymptoms as $s) {
                     $sIdx = array_search($s, $header);
-                    if ($sIdx !== false && isset($row[$sIdx]) && $row[$sIdx] == 1) $score++;
+                    if ($sIdx !== false && isset($row[$sIdx]) && $row[$sIdx] == 1) {
+                        $matchCount++;
+                    }
                 }
-                if ($score > 0) $predictions[$prognosis] = ($predictions[$prognosis] ?? 0) + $score;
+                
+                if ($matchCount > 0) {
+                    $predictions[$prognosis] = ($predictions[$prognosis] ?? 0) + $matchCount;
+                }
             }
             fclose($handle);
         }
@@ -66,13 +80,20 @@ class DiagnosaController extends Controller
         arsort($predictions);
         $top = array_slice($predictions, 0, 3, true);
 
+        // 2. Pencarian Obat
         if (file_exists($medPath) && ($handle = fopen($medPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
             while (($row = fgetcsv($handle)) !== FALSE) {
+                if (count($header) !== count($row)) continue;
                 $data = array_combine($header, $row);
                 foreach (array_keys($top) as $p) {
-                    if (stripos($data['Uses'] ?? '', $p) !== false) {
-                        $medicines[] = ['Medicine Name' => $data['Medicine Name'], 'Kategori' => 'Obat', 'Composition' => $data['Composition'], 'Side_effects' => $data['Side_effects']];
+                    if (stripos($data['Uses'] ?? '', str_replace('_', ' ', $p)) !== false) {
+                        $medicines[] = [
+                            'Medicine Name' => $data['Medicine Name'], 
+                            'Kategori' => 'Obat', 
+                            'Composition' => $data['Composition'], 
+                            'Side_effects' => $data['Side_effects']
+                        ];
                     }
                 }
                 if (count($medicines) >= 3) break;
@@ -81,8 +102,11 @@ class DiagnosaController extends Controller
         }
 
         return view('result', [
-            'top_predictions' => array_map(fn($p, $s) => ['penyakit' => str_replace('_', ' ', $p), 'probabilitas' => ($s * 10)], array_keys($top), $top),
-            'medicines' => $medicines,
+            'top_predictions' => array_map(fn($p, $s) => [
+                'penyakit' => ucwords(str_replace('_', ' ', $p)), 
+                'probabilitas' => min(95, ($s * 15) + 40)
+            ], array_keys($top), $top),
+            'medicines' => !empty($medicines) ? $medicines : [['Medicine Name' => 'Multivitamin', 'Kategori' => 'Suplemen', 'Composition' => 'Vitamin C', 'Side_effects' => '-']],
             'lang' => $lang,
             'gejala_terpilih' => array_map(fn($s) => ucwords(str_replace('_', ' ', $s)), $selectedSymptoms),
             'dokter' => 'Dokter Spesialis Sesuai Diagnosa'
