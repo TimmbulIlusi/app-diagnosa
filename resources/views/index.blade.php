@@ -192,6 +192,16 @@
         .submit-btn:active {
             transform: scale(0.99);
         }
+
+        /* --- TAMBAHAN RESPONSIVE MEDIA QUERY UNTUK HP --- */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .container { padding: 20px; border-radius: 10px; }
+            .header { flex-direction: column; gap: 15px; align-items: flex-start; }
+            .header-actions { width: 100%; justify-content: space-between; }
+            .grid { grid-template-columns: 1fr; }
+            .symptom-container { height: 300px; padding: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -235,7 +245,6 @@
             <input type="hidden" id="errorMsg" value="@if($lang == 'id') Harap centang minimal 1 gejala sebelum mendiagnosis! @else Please select at least 1 symptom before diagnosing! @endif">
             
             <div class="symptom-container">
-                <!-- Data gejala akan di-render menggunakan JavaScript secara instan -->
                 <div class="grid" id="symptomGrid">
                     <!-- Checkbox Gejala Muncul Di Sini -->
                 </div>
