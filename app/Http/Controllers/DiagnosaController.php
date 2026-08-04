@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class DiagnosaController extends Controller
@@ -13,10 +14,11 @@ class DiagnosaController extends Controller
 
     public function infoPenyakit(Request $request) { return view('info_penyakit', ['lang' => $request->input('lang', 'id')]); }
 
+    public function infoPengembang(Request $request) { return view('info_pengembang', ['lang' => $request->input('lang', 'id')]); }
+
     public function infoDataset(Request $request) 
     {
         $lang = $request->input('lang', 'id');
-        // Pastikan file berada di folder public/csv/
         $medPath = public_path('csv/Medicine_Details.csv');
         $medicineRows = [];
         
@@ -32,8 +34,6 @@ class DiagnosaController extends Controller
         return view('info_dataset', compact('lang', 'medicineRows'));
     }
 
-    public function infoPengembang(Request $request) { return view('info_pengembang', ['lang' => $request->input('lang', 'id')]); }
-
     public function predict(Request $request)
     {
         $lang = $request->input('lang', 'id');
@@ -43,55 +43,73 @@ class DiagnosaController extends Controller
             return redirect()->back()->with('error', 'Harap centang minimal 1 gejala!');
         }
 
-        // Jalur file yang diperbaiki untuk Vercel
-        $trainPath = public_path('python_service/datasets/Training.csv');
+        try {
+            // 1. Coba panggil API PythonAnywhere (AI Utama)
+            $response = Http::timeout(5)->post('https://hasto.pythonanywhere.com/api/predict', [
+                'symptoms' => $selectedSymptoms,
+                'lang' => $lang
+            ]);
+
+            if ($response->successful()) {
+                return view('result', array_merge($response->json(), [
+                    'lang' => $lang,
+                    'gejala_terpilih' => array_map(fn($s) => ucwords(str_replace('_', ' ', $s)), $selectedSymptoms)
+                ]));
+            }
+        } catch (\Exception $e) {
+            Log::error("API PythonAnywhere gagal: " . $e->getMessage());
+        }
+
+        // 2. Jika gagal, jalankan sistem fallback (Membaca CSV lokal di public/csv/)
+        return $this->runFallback($lang, $selectedSymptoms);
+    }
+
+    private function runFallback($lang, $selectedSymptoms)
+    {
+        $trainPath = public_path('csv/Training.csv');
         $medPath = public_path('csv/Medicine_Details.csv');
-        
         $predictions = [];
         $medicines = [];
 
-        // 1. Logika Diagnosa (Mencocokkan gejala dengan Training.csv)
         if (file_exists($trainPath) && ($handle = fopen($trainPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
             $prognosisIdx = array_search('prognosis', $header);
-            
             while (($row = fgetcsv($handle)) !== FALSE) {
-                if (!isset($row[$prognosisIdx])) continue;
-                
-                $prognosis = $row[$prognosisIdx];
                 $matchCount = 0;
-                
                 foreach ($selectedSymptoms as $s) {
                     $sIdx = array_search($s, $header);
-                    if ($sIdx !== false && isset($row[$sIdx]) && $row[$sIdx] == 1) {
-                        $matchCount++;
-                    }
+                    if ($sIdx !== false && isset($row[$sIdx]) && $row[$sIdx] == 1) $matchCount++;
                 }
-                
                 if ($matchCount > 0) {
-                    $predictions[$prognosis] = ($predictions[$prognosis] ?? 0) + $matchCount;
+                    $predictions[$row[$prognosisIdx]] = ($predictions[$row[$prognosisIdx]] ?? 0) + $matchCount;
                 }
             }
             fclose($handle);
         }
 
-        if (empty($predictions)) return $this->runFallback($lang, $selectedSymptoms);
+        if (empty($predictions)) {
+            return view('result', [
+                'top_predictions' => [['penyakit' => 'Gejala Umum (Observasi)', 'probabilitas' => 85.0]],
+                'medicines' => [['Medicine Name' => 'Multivitamin', 'Kategori' => 'Suplemen', 'Composition' => 'Vitamin C', 'Side_effects' => '-']],
+                'lang' => $lang,
+                'gejala_terpilih' => array_map(fn($s) => ucwords(str_replace('_', ' ', $s)), $selectedSymptoms),
+                'dokter' => 'Dokter Umum'
+            ]);
+        }
 
         arsort($predictions);
         $top = array_slice($predictions, 0, 3, true);
 
-        // 2. Pencarian Obat
         if (file_exists($medPath) && ($handle = fopen($medPath, 'r')) !== FALSE) {
             $header = fgetcsv($handle);
             while (($row = fgetcsv($handle)) !== FALSE) {
-                if (count($header) !== count($row)) continue;
                 $data = array_combine($header, $row);
                 foreach (array_keys($top) as $p) {
                     if (stripos($data['Uses'] ?? '', str_replace('_', ' ', $p)) !== false) {
                         $medicines[] = [
-                            'Medicine Name' => $data['Medicine Name'], 
-                            'Kategori' => 'Obat', 
-                            'Composition' => $data['Composition'], 
+                            'Medicine Name' => $data['Medicine Name'],
+                            'Kategori' => 'Obat',
+                            'Composition' => $data['Composition'],
                             'Side_effects' => $data['Side_effects']
                         ];
                     }
@@ -110,17 +128,6 @@ class DiagnosaController extends Controller
             'lang' => $lang,
             'gejala_terpilih' => array_map(fn($s) => ucwords(str_replace('_', ' ', $s)), $selectedSymptoms),
             'dokter' => 'Dokter Spesialis Sesuai Diagnosa'
-        ]);
-    }
-
-    private function runFallback($lang, $selectedSymptoms)
-    {
-        return view('result', [
-            'top_predictions' => [['penyakit' => 'Gejala Umum (Observasi)', 'probabilitas' => 85.0]],
-            'medicines' => [['Medicine Name' => 'Multivitamin', 'Kategori' => 'Suplemen', 'Composition' => 'Vitamin C', 'Side_effects' => '-']],
-            'lang' => $lang,
-            'gejala_terpilih' => array_map(fn($s) => ucwords(str_replace('_', ' ', $s)), $selectedSymptoms),
-            'dokter' => 'Dokter Umum'
         ]);
     }
 }
